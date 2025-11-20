@@ -1,7 +1,7 @@
 let minersData = [];
 let coldkeyIncentivesData = [];
 let sortBy = 'stake';
-let sortDirection = 'asc'; // 'asc' or 'desc'
+let sortDirection = 'desc'; // 'asc' or 'desc'
 let charts = {
     stake: null,
     rank: null,
@@ -14,7 +14,7 @@ let charts = {
 let metagraphMinersData = [];
 let metagraphColdkeyIncentivesData = [];
 let metagraphSortBy = 'stake';
-let metagraphSortDirection = 'asc';
+let metagraphSortDirection = 'desc';
 let metagraphCharts = {
     stake: null,
     rank: null,
@@ -153,8 +153,9 @@ async function fetchMetagraphData(netuid = null) {
             updateCharts();
             setupTableHeaderSorting();
             updateSortIndicators();
+            const sourceText = data.source === 'csv' ? ' (from CSV)' : '';
             document.getElementById('lastUpdated').textContent = 
-                `Last updated: ${new Date(data.timestamp).toLocaleString()}`;
+                `Last updated: ${new Date(data.timestamp).toLocaleString()}${sourceText}`;
         } else {
             console.error('Error fetching metagraph:', data.error);
             showError('Failed to fetch metagraph data: ' + data.error);
@@ -635,6 +636,13 @@ async function fetchMetagraphViewData() {
             updateMetagraphCharts();
             setupMetagraphTableHeaderSorting();
             updateMetagraphSortIndicators();
+            
+            const sourceText = data.source === 'csv' ? ' (from CSV)' : '';
+            const lastUpdatedEl = document.getElementById('lastUpdated');
+            if (lastUpdatedEl) {
+                lastUpdatedEl.textContent = 
+                    `Last updated: ${new Date(data.timestamp).toLocaleString()}${sourceText}`;
+            }
         } else {
             console.error('Error fetching metagraph view:', data.error);
         }

@@ -3,6 +3,9 @@ from flask_cors import CORS
 import bittensor as bt
 import numpy as np
 import os
+import csv
+import threading
+import time
 from datetime import datetime
 
 app = Flask(__name__, static_folder='static')
@@ -10,6 +13,13 @@ CORS(app)
 
 # Initialize Subtensor
 subtensor = bt.subtensor(network="finney")  # Use 'finney' for mainnet, 'test' for testnet
+
+# CSV file path
+CSV_DIR = 'data'
+CSV_FILE = os.path.join(CSV_DIR, 'metagraph_data.csv')
+
+# Ensure data directory exists
+os.makedirs(CSV_DIR, exist_ok=True)
 
 def calculate_percentile(data, value):
     """Calculate percentile rank of a value in a dataset"""
@@ -141,6 +151,138 @@ def get_metagraph_data(netuid=None):
             'timestamp': datetime.now().isoformat()
         }
 
+def save_metagraph_to_csv():
+    """Save metagraph data from all subnets to CSV file"""
+    try:
+        print(f"[{datetime.now()}] Starting CSV export...")
+        data = get_metagraph_data(netuid=None)  # Get all subnets
+        
+        if not data['success']:
+            print(f"[{datetime.now()}] Failed to fetch metagraph data: {data.get('error')}")
+            return
+        
+        # Prepare CSV data
+        csv_rows = []
+        for miner in data['miners']:
+            csv_rows.append({
+                'netuid': miner['netuid'],
+                'uid': miner['uid'],
+                'hotkey': miner['hotkey'],
+                'coldkey': miner['coldkey'],
+                'stake': miner['stake'],
+                'incentive': miner.get('incentive', 0),
+                'emission': miner.get('emission', 0),
+                'daily_emission': miner.get('daily_emission', 0),
+                'axon': miner.get('axon', ''),
+                'timestamp': data['timestamp']
+            })
+        
+        # Write to CSV
+        with open(CSV_FILE, 'w', newline='', encoding='utf-8') as csvfile:
+            if csv_rows:
+                fieldnames = csv_rows[0].keys()
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(csv_rows)
+        
+        print(f"[{datetime.now()}] CSV export completed: {len(csv_rows)} miners saved to {CSV_FILE}")
+    except Exception as e:
+        print(f"[{datetime.now()}] Error saving CSV: {str(e)}")
+
+def load_metagraph_from_csv():
+    """Load metagraph data from CSV file"""
+    if not os.path.exists(CSV_FILE):
+        return {
+            'success': False,
+            'error': 'CSV file not found',
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    miners = []
+    coldkey_incentives = {}
+    total_stake = 0.0
+    
+    try:
+        with open(CSV_FILE, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                miner = {
+                    'netuid': int(row['netuid']),
+                    'uid': int(row['uid']),
+                    'hotkey': row['hotkey'],
+                    'coldkey': row['coldkey'],
+                    'stake': float(row['stake']),
+                    'incentive': float(row.get('incentive', 0)),
+                    'emission': float(row.get('emission', 0)),
+                    'daily_emission': float(row.get('daily_emission', 0)),
+                    'axon': row.get('axon', ''),
+                    'active': True  # Assume active if in CSV
+                }
+                miners.append(miner)
+                total_stake += miner['stake']
+                
+                # Aggregate coldkey incentives
+                coldkey = miner['coldkey']
+                if coldkey not in coldkey_incentives:
+                    coldkey_incentives[coldkey] = []
+                coldkey_incentives[coldkey].append(miner['incentive'])
+        
+        # Calculate coldkey data
+        coldkey_data = []
+        for coldkey, incentives in coldkey_incentives.items():
+            avg_incentive = np.mean(incentives)
+            coldkey_data.append({
+                'coldkey': coldkey,
+                'avg_incentive_percentile': float(avg_incentive),
+                'miner_count': len(incentives)
+            })
+        
+        # Get file timestamp
+        file_time = os.path.getmtime(CSV_FILE)
+        file_timestamp = datetime.fromtimestamp(file_time).isoformat()
+        
+        # Calculate burn percentile
+        stakes = np.array([m['stake'] for m in miners])
+        burn_percentile = calculate_percentile(stakes, np.median(stakes)) if len(stakes) > 0 else 0.0
+        
+        return {
+            'success': True,
+            'timestamp': file_timestamp,
+            'burn_percentile': float(burn_percentile),
+            'total_miners': len(miners),
+            'total_stake': float(total_stake),
+            'total_subnets': len(set(m['netuid'] for m in miners)),
+            'selected_netuid': None,
+            'miners': miners,
+            'coldkey_incentives': coldkey_data,
+            'source': 'csv'
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Error reading CSV: {str(e)}',
+            'timestamp': datetime.now().isoformat()
+        }
+
+def csv_export_scheduler():
+    """Background thread to export CSV every 72 minutes"""
+    while True:
+        save_metagraph_to_csv()
+        # Sleep for 72 minutes (4320 seconds)
+        time.sleep(4320)
+
+# Start CSV export scheduler in background thread
+scheduler_thread = threading.Thread(target=csv_export_scheduler, daemon=True)
+scheduler_thread.start()
+
+# Initial CSV export on startup (with delay to let server start)
+def delayed_initial_export():
+    time.sleep(5)  # Wait 5 seconds for server to start
+    save_metagraph_to_csv()
+
+initial_export_thread = threading.Thread(target=delayed_initial_export, daemon=True)
+initial_export_thread.start()
+
 @app.route('/api/subnets', methods=['GET'])
 def get_subnets():
     """API endpoint to get list of all available subnets"""
@@ -175,6 +317,26 @@ def get_metagraph():
     netuid_param = request.args.get('netuid', None)
     netuid = int(netuid_param) if netuid_param and netuid_param.lower() != 'all' else None
     
+    # Check if CSV file exists and is recent (less than 72 minutes old)
+    use_csv = False
+    if netuid is None and os.path.exists(CSV_FILE):
+        file_time = os.path.getmtime(CSV_FILE)
+        age_minutes = (time.time() - file_time) / 60
+        if age_minutes < 72:
+            use_csv = True
+    
+    if use_csv:
+        # Load from CSV
+        try:
+            csv_data = load_metagraph_from_csv()
+            if csv_data['success']:
+                return jsonify(csv_data)
+            else:
+                print(f"Error loading from CSV: {csv_data.get('error')}, falling back to API")
+        except Exception as e:
+            print(f"Exception loading from CSV: {e}, falling back to API")
+    
+    # Fallback to API
     data = get_metagraph_data(netuid=netuid)
     return jsonify(data)
 
@@ -219,10 +381,33 @@ def index():
     """Serve the main page"""
     return send_from_directory('static', 'index.html')
 
+@app.route('/api/csv-status', methods=['GET'])
+def csv_status():
+    """Get CSV file status"""
+    if os.path.exists(CSV_FILE):
+        file_time = os.path.getmtime(CSV_FILE)
+        age_minutes = (time.time() - file_time) / 60
+        return jsonify({
+            'exists': True,
+            'age_minutes': round(age_minutes, 2),
+            'last_updated': datetime.fromtimestamp(file_time).isoformat(),
+            'file_path': CSV_FILE
+        })
+    else:
+        return jsonify({
+            'exists': False,
+            'age_minutes': None,
+            'last_updated': None,
+            'file_path': CSV_FILE
+        })
+
 @app.route('/<path:path>')
 def serve_static(path):
     """Serve static files"""
     return send_from_directory('static', path)
 
 if __name__ == '__main__':
+    print(f"[{datetime.now()}] Starting Flask server...")
+    print(f"[{datetime.now()}] CSV export scheduled every 72 minutes")
+    print(f"[{datetime.now()}] CSV file location: {CSV_FILE}")
     app.run(debug=True, host='0.0.0.0', port=5000)

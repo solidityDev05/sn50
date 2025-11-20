@@ -42,3 +42,7 @@ Thumbs.db
 .env
 .env.local
 
+# Data directory
+data/
+*.csv
+
