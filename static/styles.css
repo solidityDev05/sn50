@@ -252,7 +252,6 @@ th.sort-desc::after {
 td {
     padding: 12px 15px;
     border-bottom: 1px solid #eee;
-    vertical-align: middle;
 }
 
 tbody tr {
@@ -307,54 +306,10 @@ tbody tr:hover {
 .hotkey-cell, .coldkey-cell {
     font-family: 'Courier New', monospace;
     font-size: 0.85em;
-    max-width: 250px;
-    min-width: 200px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 15px !important;
-}
-
-.address-text {
-    flex: 1;
+    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    min-width: 0;
-}
-
-.copy-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 0.9em;
-    padding: 4px 6px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-    opacity: 0.6;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    height: 24px;
-}
-
-.copy-btn:hover {
-    opacity: 1;
-    background-color: #e9ecef;
-    transform: scale(1.1);
-}
-
-.copy-btn.copied {
-    opacity: 1;
-    background-color: #d4edda;
-    color: #155724;
-    font-weight: bold;
-}
-
-.copy-btn:active {
-    transform: scale(0.95);
 }
 
 @media (max-width: 768px) {
