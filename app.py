@@ -86,10 +86,10 @@ def get_metagraph_data(netuid=None):
                         'incentive': float(incentives[uid]),
                         'incentive_emission': float(incentive_emission),
                         'daily_emission': float(daily_emission),
-                        'stake_percentile': calculate_percentile(stakes, stakes[uid]),
-                        'rank_percentile': calculate_percentile(ranks, ranks[uid]),
-                        'trust_percentile': calculate_percentile(trusts, trusts[uid]),
-                        'incentive_percentile': calculate_percentile(incentives, incentives[uid]),
+                        'stake_percentile': stakes[uid],
+                        'rank_percentile': ranks[uid],
+                        'trust_percentile': trusts[uid],
+                        'incentive_percentile': incentives[uid],
                         'active': bool(metagraph.axons[uid].ip != '0.0.0.0')
                     }
                     all_miners.append(miner_data)
