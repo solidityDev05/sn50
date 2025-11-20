@@ -15,6 +15,17 @@ A modern web application that displays the current status of the Bittensor metag
 - 📈 **Sorting**: Sort miners by different percentile metrics
 - 🔄 **Auto-refresh**: Automatically updates every 60 seconds
 
+## Requirements
+
+- **Python 3.10 or higher** (required for Bittensor SDK compatibility)
+
+Check your Python version:
+```bash
+python --version
+# or
+python3 --version
+```
+
 ## Installation
 
 1. **Install Python dependencies:**

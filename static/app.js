@@ -1,5 +1,11 @@
 let minersData = [];
 let sortBy = 'stake_percentile';
+let charts = {
+    stake: null,
+    rank: null,
+    trust: null,
+    incentive: null
+};
 
 // Format number with commas
 function formatNumber(num) {
@@ -40,6 +46,7 @@ async function fetchMetagraphData() {
             updateStats(data);
             minersData = data.miners || [];
             renderMinersTable();
+            updateCharts();
             document.getElementById('lastUpdated').textContent = 
                 `Last updated: ${new Date(data.timestamp).toLocaleString()}`;
         } else {
@@ -137,6 +144,102 @@ function renderMinersTable() {
             </td>
         </tr>
     `).join('');
+}
+
+// Calculate distribution by percentile ranges
+function calculateDistribution(data, field) {
+    const ranges = {
+        '0-25%': 0,
+        '25-50%': 0,
+        '50-75%': 0,
+        '75-100%': 0
+    };
+    
+    data.forEach(miner => {
+        const percentile = miner[field];
+        if (percentile >= 75) {
+            ranges['75-100%']++;
+        } else if (percentile >= 50) {
+            ranges['50-75%']++;
+        } else if (percentile >= 25) {
+            ranges['25-50%']++;
+        } else {
+            ranges['0-25%']++;
+        }
+    });
+    
+    return ranges;
+}
+
+// Create or update pie chart
+function createChart(canvasId, colors) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    
+    const chartType = canvasId.replace('Chart', '');
+    
+    // Destroy existing chart if it exists
+    if (charts[chartType]) {
+        charts[chartType].destroy();
+    }
+    
+    const ranges = calculateDistribution(minersData, `${chartType}_percentile`);
+    
+    charts[chartType] = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(ranges),
+            datasets: [{
+                data: Object.values(ranges),
+                backgroundColor: colors,
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} miners (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Update all charts
+function updateCharts() {
+    if (minersData.length === 0) return;
+    
+    const colors = {
+        stake: ['#28a745', '#ffc107', '#fd7e14', '#dc3545'],
+        rank: ['#17a2b8', '#6f42c1', '#e83e8c', '#20c997'],
+        trust: ['#007bff', '#6610f2', '#6f42c1', '#e83e8c'],
+        incentive: ['#20c997', '#17a2b8', '#ffc107', '#fd7e14']
+    };
+    
+    createChart('stakeChart', colors.stake);
+    createChart('rankChart', colors.rank);
+    createChart('trustChart', colors.trust);
+    createChart('incentiveChart', colors.incentive);
 }
 
 // Show error message

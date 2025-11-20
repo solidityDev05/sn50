@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bittensor Metagraph Status</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -46,6 +47,28 @@
                 <option value="uid">Sort by UID</option>
             </select>
             <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+        </div>
+
+        <div class="charts-section">
+            <h2>Miner Distribution Charts</h2>
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Stake Percentile Distribution</h3>
+                    <canvas id="stakeChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Rank Percentile Distribution</h3>
+                    <canvas id="rankChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Trust Percentile Distribution</h3>
+                    <canvas id="trustChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Incentive Percentile Distribution</h3>
+                    <canvas id="incentiveChart"></canvas>
+                </div>
+            </div>
         </div>
 
         <div class="miners-section">
