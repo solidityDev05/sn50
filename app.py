@@ -108,7 +108,7 @@ def get_metagraph_data(netuid=None):
             coldkey = miner['coldkey']
             if coldkey not in coldkey_incentives:
                 coldkey_incentives[coldkey] = []
-            coldkey_incentives[coldkey].append(miner['incentive_percentile'])
+            coldkey_incentives[coldkey].append(miner['incentive'])
         
         # Calculate average incentive percentile per coldkey
         coldkey_data = []
