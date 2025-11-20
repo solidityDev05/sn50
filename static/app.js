@@ -38,10 +38,39 @@ function truncateAddress(address, start = 6, end = 4) {
     return address.substring(0, start) + '...' + address.substring(address.length - end);
 }
 
-// Fetch metagraph data
-async function fetchMetagraphData() {
+// Fetch available subnets
+async function fetchSubnets() {
     try {
-        const response = await fetch('/api/metagraph');
+        const response = await fetch('/api/subnets');
+        const data = await response.json();
+        
+        if (data.success && data.subnets) {
+            const subnetSelect = document.getElementById('subnetSelect');
+            // Clear existing options except "All Subnets"
+            subnetSelect.innerHTML = '<option value="all">All Subnets</option>';
+            
+            // Add each subnet as an option
+            data.subnets.forEach(netuid => {
+                const option = document.createElement('option');
+                option.value = netuid;
+                option.textContent = `Subnet ${netuid}`;
+                subnetSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching subnets:', error);
+    }
+}
+
+// Fetch metagraph data
+async function fetchMetagraphData(netuid = null) {
+    try {
+        let url = '/api/metagraph';
+        if (netuid !== null && netuid !== 'all') {
+            url += `?netuid=${netuid}`;
+        }
+        
+        const response = await fetch(url);
         const data = await response.json();
         
         if (data.success) {
@@ -329,8 +358,14 @@ function showError(message) {
 
 // Event listeners
 document.getElementById('refreshBtn').addEventListener('click', () => {
-    fetchMetagraphData();
+    const selectedNetuid = document.getElementById('subnetSelect').value;
+    fetchMetagraphData(selectedNetuid);
     fetchAlphaPrice();
+});
+
+document.getElementById('subnetSelect').addEventListener('change', (e) => {
+    const selectedNetuid = e.target.value;
+    fetchMetagraphData(selectedNetuid);
 });
 
 document.getElementById('searchInput').addEventListener('input', () => {
@@ -343,12 +378,24 @@ document.getElementById('sortSelect').addEventListener('change', (e) => {
 });
 
 // Initial load
-fetchMetagraphData();
+fetchSubnets().then(() => {
+    // Set default to subnet 0 if it exists, otherwise "all"
+    const subnetSelect = document.getElementById('subnetSelect');
+    const subnet0Option = subnetSelect.querySelector('option[value="0"]');
+    if (subnet0Option) {
+        subnetSelect.value = '0';
+        fetchMetagraphData('0');
+    } else {
+        subnetSelect.value = 'all';
+        fetchMetagraphData('all');
+    }
+});
 fetchAlphaPrice();
 
 // Auto-refresh every 60 seconds
 setInterval(() => {
-    fetchMetagraphData();
+    const selectedNetuid = document.getElementById('subnetSelect').value;
+    fetchMetagraphData(selectedNetuid);
     fetchAlphaPrice();
 }, 60000);
 

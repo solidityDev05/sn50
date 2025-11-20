@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 import bittensor as bt
 import numpy as np
@@ -17,8 +17,8 @@ def calculate_percentile(data, value):
         return 0
     return (np.sum(data <= value) / len(data)) * 100
 
-def get_metagraph_data():
-    """Fetch and process metagraph data from all subnets"""
+def get_metagraph_data(netuid=None):
+    """Fetch and process metagraph data from all subnets or a specific subnet"""
     try:
         # Get all subnet IDs - try different API methods for compatibility
         try:
@@ -32,15 +32,26 @@ def get_metagraph_data():
                 # If both fail, try to get subnets manually (0-32 is typical range)
                 all_subnets = list(range(0, 33))
         
+        # Filter to specific subnet if requested
+        if netuid is not None:
+            if netuid not in all_subnets:
+                return {
+                    'success': False,
+                    'error': f'Subnet {netuid} not found',
+                    'timestamp': datetime.now().isoformat()
+                }
+            all_subnets = [netuid]
+        
         all_miners = []
         all_stakes = []
         total_stake_all = 0.0
+        processed_subnets = 0
         
         # Process each subnet
-        for netuid in all_subnets:
+        for subnet_id in all_subnets:
             try:
                 # Sync metagraph for this subnet
-                metagraph = subtensor.metagraph(netuid=netuid)
+                metagraph = subtensor.metagraph(netuid=subnet_id)
                 metagraph.sync()
                 
                 # Get all metrics
@@ -53,7 +64,7 @@ def get_metagraph_data():
                 for uid in range(len(metagraph.hotkeys)):
                     miner_data = {
                         'uid': int(uid),
-                        'netuid': int(netuid),
+                        'netuid': int(subnet_id),
                         'hotkey': str(metagraph.hotkeys[uid]),
                         'coldkey': str(metagraph.coldkeys[uid]),
                         'stake': float(stakes[uid]),
@@ -69,9 +80,10 @@ def get_metagraph_data():
                     all_miners.append(miner_data)
                     all_stakes.append(float(stakes[uid]))
                     total_stake_all += float(stakes[uid])
+                processed_subnets += 1
             except Exception as subnet_error:
                 # Continue with other subnets if one fails
-                print(f"Error processing subnet {netuid}: {subnet_error}")
+                print(f"Error processing subnet {subnet_id}: {subnet_error}")
                 continue
         
         # Calculate global burn percentile across all subnets
@@ -108,7 +120,8 @@ def get_metagraph_data():
             'burn_percentile': float(burn_percentile),
             'total_miners': len(all_miners),
             'total_stake': float(total_stake_all),
-            'total_subnets': len(all_subnets),
+            'total_subnets': processed_subnets,
+            'selected_netuid': netuid,
             'miners': all_miners,
             'coldkey_incentives': coldkey_data
         }
@@ -119,10 +132,41 @@ def get_metagraph_data():
             'timestamp': datetime.now().isoformat()
         }
 
+@app.route('/api/subnets', methods=['GET'])
+def get_subnets():
+    """API endpoint to get list of all available subnets"""
+    try:
+        # Get all subnet IDs - try different API methods for compatibility
+        try:
+            all_subnets = subtensor.get_all_subnet_netuids()
+        except AttributeError:
+            # Fallback: try get_all_subnets() and extract netuids
+            try:
+                subnets_list = subtensor.get_all_subnets()
+                all_subnets = [s['netuid'] if isinstance(s, dict) else s for s in subnets_list]
+            except:
+                # If both fail, try to get subnets manually (0-32 is typical range)
+                all_subnets = list(range(0, 33))
+        
+        return jsonify({
+            'success': True,
+            'subnets': sorted([int(n) for n in all_subnets])
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'subnets': []
+        })
+
 @app.route('/api/metagraph', methods=['GET'])
 def get_metagraph():
     """API endpoint to get metagraph data"""
-    data = get_metagraph_data()
+    # Get optional netuid parameter (None means all subnets)
+    netuid_param = request.args.get('netuid', None)
+    netuid = int(netuid_param) if netuid_param and netuid_param.lower() != 'all' else None
+    
+    data = get_metagraph_data(netuid=netuid)
     return jsonify(data)
 
 @app.route('/api/alpha-price', methods=['GET'])
