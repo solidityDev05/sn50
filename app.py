@@ -121,7 +121,7 @@ def get_metagraph_data(netuid=None):
             })
         
         # Sort miners by stake percentile (descending)
-        all_miners.sort(key=lambda x: x['stake_percentile'], reverse=True)
+        all_miners.sort(key=lambda x: x['stake'], reverse=True)
         
         return {
             'success': True,
