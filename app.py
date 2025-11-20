@@ -60,8 +60,26 @@ def get_metagraph_data(netuid=None):
                 trusts = np.array([float(t) for t in metagraph.T])
                 incentives = np.array([float(i) for i in metagraph.I])
                 
+                # Get emission data if available (E array contains emission per block for each miner)
+                try:
+                    emissions = np.array([float(e) for e in metagraph.E])
+                except:
+                    emissions = np.array([])
+                
+                # Blocks per day (approximately 7200 blocks per day for Bittensor)
+                blocks_per_day = 7200
+                
                 # Calculate percentiles within this subnet
                 for uid in range(len(metagraph.hotkeys)):
+                    # Calculate incentive emission (emission per block in TAO)
+                    incentive_emission = 0.0
+                    if len(emissions) > uid:
+                        # E array is typically in rao, convert to TAO (1 TAO = 1e9 rao)
+                        incentive_emission = float(emissions[uid]) / 1e9
+                    
+                    # Calculate daily emission (emission per block * blocks per day)
+                    daily_emission = incentive_emission * blocks_per_day if incentive_emission > 0 else 0.0
+                    
                     miner_data = {
                         'uid': int(uid),
                         'netuid': int(subnet_id),
@@ -71,6 +89,8 @@ def get_metagraph_data(netuid=None):
                         'rank': float(ranks[uid]),
                         'trust': float(trusts[uid]),
                         'incentive': float(incentives[uid]),
+                        'incentive_emission': float(incentive_emission),
+                        'daily_emission': float(daily_emission),
                         'stake_percentile': calculate_percentile(stakes, stakes[uid]),
                         'rank_percentile': calculate_percentile(ranks, ranks[uid]),
                         'trust_percentile': calculate_percentile(trusts, trusts[uid]),

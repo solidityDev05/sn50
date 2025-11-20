@@ -297,6 +297,8 @@ function renderMinersTable() {
                 ${formatPercent(miner.incentive_percentile)}
             </td>
             <td>${formatNumber(miner.stake)}</td>
+            <td>${formatNumber(miner.incentive_emission || 0)}</td>
+            <td>${formatNumber(miner.daily_emission || 0)}</td>
             <td>
                 <span class="status-badge ${miner.active ? 'status-active' : 'status-inactive'}">
                     ${miner.active ? 'Active' : 'Inactive'}
@@ -490,7 +492,7 @@ function updateCharts() {
 // Show error message
 function showError(message) {
     const tbody = document.getElementById('minersTableBody');
-    tbody.innerHTML = `<tr><td colspan="10" class="loading" style="color: #dc3545;">${message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="loading" style="color: #dc3545;">${message}</td></tr>`;
 }
 
 // Function to handle column header clicks for sorting
@@ -705,7 +707,7 @@ function renderMetagraphTable() {
     });
     
     if (filteredMiners.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="loading">No miners found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="loading">No miners found</td></tr>';
         return;
     }
     
@@ -728,6 +730,8 @@ function renderMetagraphTable() {
                 ${formatPercent(miner.incentive_percentile)}
             </td>
             <td>${formatNumber(miner.stake)}</td>
+            <td>${formatNumber(miner.incentive_emission || 0)}</td>
+            <td>${formatNumber(miner.daily_emission || 0)}</td>
             <td>
                 <span class="status-badge ${miner.active ? 'status-active' : 'status-inactive'}">
                     ${miner.active ? 'Active' : 'Inactive'}
@@ -889,7 +893,9 @@ function setupMetagraphTableHeaderSorting() {
             6: 'trust_percentile',
             7: 'incentive_percentile',
             8: 'stake',
-            9: 'active'
+            9: 'incentive_emission',
+            10: 'daily_emission',
+            11: 'active'
         };
         
         const fieldName = columnMap[index];
@@ -925,7 +931,9 @@ function updateMetagraphSortIndicators() {
         6: 'trust_percentile',
         7: 'incentive_percentile',
         8: 'stake',
-        9: 'active'
+        9: 'incentive_emission',
+        10: 'daily_emission',
+        11: 'active'
     };
     
     headers.forEach((header, index) => {
