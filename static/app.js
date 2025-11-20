@@ -496,17 +496,15 @@ function setupTableHeaderSorting() {
         // Map column index to field name
         const columnMap = {
             0: 'netuid',
-            1: 'uid',
-            2: 'hotkey',
-            3: 'coldkey',
-            4: 'stake_percentile',
-            5: 'rank_percentile',
-            6: 'trust_percentile',
-            7: 'incentive_percentile',
-            8: 'stake',
-            9: 'IP'
+            1: 'stake',
+            2: 'uid',
+            3: 'hotkey',
+            4: 'coldkey',
+            5: 'incentive'  ,
+            6: 'emission',
+            7: 'daily_emission',
+            8: 'axon',
         };
-        
         const fieldName = columnMap[index];
         if (fieldName) {
             header.style.cursor = 'pointer';
@@ -533,15 +531,14 @@ function updateSortIndicators() {
     const headers = document.querySelectorAll('#minersTable thead th');
     const columnMap = {
         0: 'netuid',
-        1: 'uid',
-        2: 'hotkey',
-        3: 'coldkey',
-        4: 'stake_percentile',
-        5: 'rank_percentile',
-        6: 'trust_percentile',
-        7: 'incentive_percentile',
-        8: 'stake',
-        9: 'active'
+        1: 'stake',
+        2: 'uid',
+        3: 'hotkey',
+        4: 'coldkey',
+        5: 'incentive'  ,
+        6: 'emission',
+        7: 'daily_emission',
+        8: 'axon',
     };
     
     headers.forEach((header, index) => {
@@ -742,10 +739,7 @@ function updateMetagraphCharts() {
         incentive: ['#20c997', '#17a2b8', '#ffc107', '#fd7e14']
     };
     
-    createMetagraphChart('metagraphStakeChart', 'stake_percentile', colors.stake);
-    createMetagraphChart('metagraphRankChart', 'rank_percentile', colors.rank);
-    createMetagraphChart('metagraphTrustChart', 'trust_percentile', colors.trust);
-    createMetagraphChart('metagraphIncentiveChart', 'incentive_percentile', colors.incentive);
+    createMetagraphChart('metagraphStakeChart', 'stake', colors.stake);
     createMetagraphColdkeyIncentiveChart();
 }
 
@@ -875,17 +869,14 @@ function setupMetagraphTableHeaderSorting() {
     headers.forEach((header, index) => {
         const columnMap = {
             0: 'netuid',
-            1: 'uid',
-            2: 'hotkey',
-            3: 'coldkey',
-            4: 'stake_percentile',
-            5: 'rank_percentile',
-            6: 'trust_percentile',
-            7: 'incentive_percentile',
-            8: 'stake',
-            9: 'incentive_emission',
-            10: 'daily_emission',
-            11: 'active'
+            1: 'stake',
+            2: 'uid',
+            3: 'hotkey',
+            4: 'coldkey',
+            5: 'incentive'  ,
+            6: 'emission',
+            7: 'daily_emission',
+            8: 'axon',
         };
         
         const fieldName = columnMap[index];
@@ -913,17 +904,14 @@ function updateMetagraphSortIndicators() {
     const headers = document.querySelectorAll('#metagraphTable thead th');
     const columnMap = {
         0: 'netuid',
-        1: 'uid',
-        2: 'hotkey',
-        3: 'coldkey',
-        4: 'stake_percentile',
-        5: 'rank_percentile',
-        6: 'trust_percentile',
-        7: 'incentive_percentile',
-        8: 'stake',
-        9: 'incentive_emission',
-        10: 'daily_emission',
-        11: 'active'
+        1: 'stake',
+        2: 'uid',
+        3: 'hotkey',
+        4: 'coldkey',
+        5: 'incentive'  ,
+        6: 'emission',
+        7: 'daily_emission',
+        8: 'axon',
     };
     
     headers.forEach((header, index) => {

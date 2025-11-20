@@ -117,7 +117,7 @@ def get_metagraph_data(netuid=None):
             coldkey_data.append({
                 'coldkey': coldkey,
                 'avg_incentive_percentile': float(avg_incentive),
-                'miner_count': len(incentive_percentiles)
+                'miner_count': len(incentives)
             })
         
         # Sort miners by stake percentile (descending)
