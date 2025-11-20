@@ -81,8 +81,6 @@ def get_metagraph_data(netuid=None):
                         'hotkey': str(metagraph.hotkeys[uid]),
                         'coldkey': str(metagraph.coldkeys[uid]),
                         'stake': float(stakes[uid]),
-                        'rank': float(ranks[uid]),
-                        'trust': float(trusts[uid]),
                         'incentive': float(incentives[uid]),
                         'emission': float(incentive_emission),
                         'daily_emission': float(daily_emission),
@@ -115,7 +113,7 @@ def get_metagraph_data(netuid=None):
         # Calculate average incentive percentile per coldkey
         coldkey_data = []
         for coldkey, incentive_percentiles in coldkey_incentives.items():
-            avg_incentive = np.mean(incentive_percentiles)
+            avg_incentive = np.mean(incentives)
             coldkey_data.append({
                 'coldkey': coldkey,
                 'avg_incentive_percentile': float(avg_incentive),
