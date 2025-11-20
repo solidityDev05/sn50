@@ -301,6 +301,15 @@ tbody tr:hover {
     background: #f8f9fa;
 }
 
+tbody tr.validator-row {
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+}
+
+tbody tr.validator-row:hover {
+    background-color: #bbdefb;
+}
+
 .loading {
     text-align: center;
     padding: 40px !important;

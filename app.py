@@ -90,7 +90,7 @@ def get_metagraph_data(netuid=None):
                         'rank_percentile': ranks[uid],
                         'trust_percentile': trusts[uid],
                         'incentive_percentile': incentives[uid],
-                        'active': metagraph.axons[uid].ip
+                        'axon': metagraph.axons[uid].ip_str()[6:]
                     }
                     all_miners.append(miner_data)
                     all_stakes.append(float(stakes[uid]))

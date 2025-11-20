@@ -268,10 +268,12 @@ function renderMinersTable() {
         const hotkey = miner.hotkey || '';
         const coldkey = miner.coldkey || '';
         
+        const isValidator = parseFloat(miner.stake) > 10000;
         return `
-        <tr>
+        <tr class="${isValidator ? 'validator-row' : ''}">
             <td>${miner.netuid || 'N/A'}</td>
             <td>${miner.uid}</td>
+            <td>${formatNumber(miner.stake)}</td>
             <td class="hotkey-cell" title="${hotkey}">
                 <span class="address-text">${truncateAddress(hotkey)}</span>
                 <button class="copy-btn" data-copy-text="${escapeHtml(hotkey)}" title="Copy hotkey">
@@ -284,24 +286,16 @@ function renderMinersTable() {
                     📋
                 </button>
             </td>
-            <td class="percentile-cell ${getPercentileClass(miner.stake_percentile)}">
-                ${formatPercent(miner.stake_percentile)}
-            </td>
-            <td class="percentile-cell ${getPercentileClass(miner.rank_percentile)}">
-                ${formatPercent(miner.rank_percentile)}
-            </td>
-            <td class="percentile-cell ${getPercentileClass(miner.trust_percentile)}">
-                ${formatPercent(miner.trust_percentile)}
-            </td>
+
             <td class="percentile-cell ${getPercentileClass(miner.incentive_percentile)}">
-                ${formatPercent(miner.incentive_percentile)}
+                ${formatNumber(miner.incentive_percentile)}
             </td>
-            <td>${formatNumber(miner.stake)}</td>
+
             <td>${formatNumber(miner.incentive_emission || 0)}</td>
             <td>${formatNumber(miner.daily_emission || 0)}</td>
             <td>
-                <span class="status-badge ${miner.active ? 'status-active' : 'status-inactive'}">
-                    ${miner.active ? 'Active' : 'Inactive'}
+                <span class="status-badge">
+                    ${miner.axon}
                 </span>
             </td>
         </tr>
@@ -510,7 +504,7 @@ function setupTableHeaderSorting() {
             6: 'trust_percentile',
             7: 'incentive_percentile',
             8: 'stake',
-            9: 'active'
+            9: 'IP'
         };
         
         const fieldName = columnMap[index];
@@ -711,34 +705,30 @@ function renderMetagraphTable() {
         return;
     }
     
-    tbody.innerHTML = filteredMiners.map(miner => `
-        <tr>
+    tbody.innerHTML = filteredMiners.map(miner => {
+        const isValidator = parseFloat(miner.stake) > 10000;
+        return `
+        <tr class="${isValidator ? 'validator-row' : ''}">
             <td>${miner.netuid || 'N/A'}</td>
             <td>${miner.uid}</td>
+            <td>${formatNumber(miner.stake)}</td>
             <td class="hotkey-cell" title="${miner.hotkey}">${truncateAddress(miner.hotkey)}</td>
             <td class="coldkey-cell" title="${miner.coldkey}">${truncateAddress(miner.coldkey)}</td>
-            <td class="percentile-cell ${getPercentileClass(miner.stake_percentile)}">
-                ${formatPercent(miner.stake_percentile)}
-            </td>
-            <td class="percentile-cell ${getPercentileClass(miner.rank_percentile)}">
-                ${formatPercent(miner.rank_percentile)}
-            </td>
-            <td class="percentile-cell ${getPercentileClass(miner.trust_percentile)}">
-                ${formatPercent(miner.trust_percentile)}
-            </td>
+
             <td class="percentile-cell ${getPercentileClass(miner.incentive_percentile)}">
-                ${formatPercent(miner.incentive_percentile)}
+                ${formatNumber(miner.incentive_percentile)}
             </td>
-            <td>${formatNumber(miner.stake)}</td>
+
             <td>${formatNumber(miner.incentive_emission || 0)}</td>
             <td>${formatNumber(miner.daily_emission || 0)}</td>
             <td>
-                <span class="status-badge ${miner.active ? 'status-active' : 'status-inactive'}">
-                    ${miner.active ? 'Active' : 'Inactive'}
+                <span class="status-badge">
+                    ${miner.axon}
                 </span>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Update metagraph charts
