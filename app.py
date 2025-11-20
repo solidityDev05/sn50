@@ -30,7 +30,7 @@ def get_metagraph_data(netuid=None):
                 all_subnets = [s['netuid'] if isinstance(s, dict) else s for s in subnets_list]
             except:
                 # If both fail, try to get subnets manually (0-32 is typical range)
-                all_subnets = list(range(0, 33))
+                all_subnets = list(range(0, 129))
         
         # Filter to specific subnet if requested
         if netuid is not None:
@@ -59,15 +59,10 @@ def get_metagraph_data(netuid=None):
                 ranks = np.array([float(r) for r in metagraph.R])
                 trusts = np.array([float(t) for t in metagraph.T])
                 incentives = np.array([float(i) for i in metagraph.I])
-                
-                # Get emission data if available (E array contains emission per block for each miner)
-                try:
-                    emissions = np.array([float(e) for e in metagraph.E])
-                except:
-                    emissions = np.array([])
+                emissions  = np.array([float(i) for i in metagraph.E])
                 
                 # Blocks per day (approximately 7200 blocks per day for Bittensor)
-                blocks_per_day = 7200
+                epochs_per_day = 20
                 
                 # Calculate percentiles within this subnet
                 for uid in range(len(metagraph.hotkeys)):
@@ -75,10 +70,10 @@ def get_metagraph_data(netuid=None):
                     incentive_emission = 0.0
                     if len(emissions) > uid:
                         # E array is typically in rao, convert to TAO (1 TAO = 1e9 rao)
-                        incentive_emission = float(emissions[uid]) / 1e9
+                        incentive_emission = float(emissions[uid])
                     
                     # Calculate daily emission (emission per block * blocks per day)
-                    daily_emission = incentive_emission * blocks_per_day if incentive_emission > 0 else 0.0
+                    daily_emission = incentive_emission * epochs_per_day if incentive_emission > 0 else 0.0
                     
                     miner_data = {
                         'uid': int(uid),
@@ -166,7 +161,7 @@ def get_subnets():
                 all_subnets = [s['netuid'] if isinstance(s, dict) else s for s in subnets_list]
             except:
                 # If both fail, try to get subnets manually (0-32 is typical range)
-                all_subnets = list(range(0, 33))
+                all_subnets = list(range(0, 129))
         
         return jsonify({
             'success': True,
