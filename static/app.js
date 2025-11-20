@@ -7,7 +7,8 @@ let charts = {
     rank: null,
     trust: null,
     incentive: null,
-    coldkeyIncentive: null
+    coldkeyIncentive: null,
+    burnStatus: null
 };
 
 // Metagraph view data
@@ -20,7 +21,8 @@ let metagraphCharts = {
     rank: null,
     trust: null,
     incentive: null,
-    coldkeyIncentive: null
+    coldkeyIncentive: null,
+    burnStatus: null
 };
 
 // Format number with commas
@@ -151,6 +153,9 @@ async function fetchMetagraphData(netuid = null) {
             coldkeyIncentivesData = data.coldkey_incentives || [];
             renderMinersTable();
             updateCharts();
+            if (data.burn_stats) {
+                createBurnStatusChart('burnStatusChart', data.burn_stats);
+            }
             setupTableHeaderSorting();
             updateSortIndicators();
             const sourceText = data.source === 'csv' ? ' (from CSV)' : '';
@@ -275,6 +280,7 @@ function renderMinersTable() {
             <td>${miner.netuid || 'N/A'}</td>
             <td>${miner.uid}</td>
             <td>${formatNumber(miner.stake)}</td>
+            <td>${formatNumber(miner.tao_amount || 0)}</td>
             <td class="hotkey-cell" title="${hotkey}">
                 <span class="address-text">${truncateAddress(hotkey)}</span>
                 <button class="copy-btn" data-copy-text="${escapeHtml(hotkey)}" title="Copy hotkey">
@@ -459,6 +465,89 @@ function createColdkeyIncentiveChart() {
                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                             return `${label}: ${value} coldkeys (${percentage}%)`;
                         }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Create burn status chart
+function createBurnStatusChart(canvasId, burnStats) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx || !burnStats) return;
+    
+    const chartKey = canvasId === 'burnStatusChart' ? 'burnStatus' : 'metagraphBurnStatus';
+    const chartObj = canvasId === 'burnStatusChart' ? charts : metagraphCharts;
+    
+    // Destroy existing chart if it exists
+    if (chartObj[chartKey]) {
+        chartObj[chartKey].destroy();
+    }
+    
+    // Prepare data for chart
+    const subnetIds = Object.keys(burnStats).sort((a, b) => parseInt(a) - parseInt(b));
+    const burnedCounts = subnetIds.map(id => burnStats[id]['burned_miners']);
+    const totalCounts = subnetIds.map(id => burnStats[id]['total_miners']);
+    const burnedPercentages = subnetIds.map((id, idx) => 
+        totalCounts[idx] > 0 ? (burnedCounts[idx] / totalCounts[idx] * 100) : 0
+    );
+    
+    chartObj[chartKey] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: subnetIds.map(id => `Subnet ${id}`),
+            datasets: [
+                {
+                    label: 'Burned Miners',
+                    data: burnedCounts,
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Total Miners',
+                    data: totalCounts,
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.parsed.y || 0;
+                            const idx = context.dataIndex;
+                            if (label === 'Burned Miners') {
+                                const percentage = burnedPercentages[idx].toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                            return `${label}: ${value}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Miners'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Subnet'
                     }
                 }
             }
@@ -717,6 +806,7 @@ function renderMetagraphTable() {
             <td>${miner.netuid || 'N/A'}</td>
             <td>${miner.uid}</td>
             <td>${formatNumber(miner.stake)}</td>
+            <td>${formatNumber(miner.tao_amount || 0)}</td>
             <td class="hotkey-cell" title="${miner.hotkey}">${truncateAddress(miner.hotkey)}</td>
             <td class="coldkey-cell" title="${miner.coldkey}">${truncateAddress(miner.coldkey)}</td>
 

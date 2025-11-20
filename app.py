@@ -14,6 +14,10 @@ CORS(app)
 # Initialize Subtensor
 subtensor = bt.subtensor(network="finney")  # Use 'finney' for mainnet, 'test' for testnet
 
+# Global TAO price cache
+tao_price_cache = None
+tao_price_cache_time = None
+
 # CSV file path
 CSV_DIR = 'data'
 CSV_FILE = os.path.join(CSV_DIR, 'metagraph_data.csv')
@@ -26,6 +30,47 @@ def calculate_percentile(data, value):
     if len(data) == 0:
         return 0
     return (np.sum(data <= value) / len(data)) * 100
+
+def get_tao_price():
+    """Get TAO price using subtensor.all_subnets()[120].price * 2980"""
+    global tao_price_cache, tao_price_cache_time
+    
+    # Cache price for 5 minutes
+    if tao_price_cache and tao_price_cache_time:
+        if (time.time() - tao_price_cache_time) < 300:
+            return tao_price_cache
+    
+    try:
+        # Get price from subnet 120
+        all_subnets_metagraph = subtensor.all_subnets()
+        if len(all_subnets_metagraph) > 120:
+            price = float(all_subnets_metagraph[120].price) * 2980
+            tao_price_cache = price
+            tao_price_cache_time = time.time()
+            return price
+        else:
+            print(f"Warning: Subnet 120 not found, using fallback")
+    except Exception as e:
+        print(f"Error getting TAO price from subnet 120: {e}")
+    
+    # Fallback to CoinGecko
+    try:
+        import requests
+        response = requests.get(
+            'https://api.coingecko.com/api/v3/simple/price?ids=bittensor&vs_currencies=usd',
+            timeout=5
+        )
+        if response.status_code == 200:
+            data = response.json()
+            price = data.get('bittensor', {}).get('usd', 0.0)
+            tao_price_cache = float(price)
+            tao_price_cache_time = time.time()
+            return float(price)
+    except:
+        pass
+    
+    # Return cached price or default
+    return tao_price_cache if tao_price_cache else 0.0
 
 def get_metagraph_data(netuid=None):
     """Fetch and process metagraph data from all subnets or a specific subnet"""
@@ -71,8 +116,18 @@ def get_metagraph_data(netuid=None):
                 incentives = np.array([float(i) for i in metagraph.I])
                 emissions  = np.array([float(i) for i in metagraph.E])
                 
+                # Get TAO price
+                tao_price = get_tao_price()
+                
                 # Blocks per day (approximately 7200 blocks per day for Bittensor)
                 epochs_per_day = 20
+                
+                # Get owner hotkeys for burn detection (hotkeys that own themselves)
+                owner_hotkeys = set()
+                for uid_check in range(len(metagraph.hotkeys)):
+                    # Check if hotkey == coldkey (self-owned, considered burn if has incentive)
+                    if str(metagraph.hotkeys[uid_check]) == str(metagraph.coldkeys[uid_check]):
+                        owner_hotkeys.add(str(metagraph.hotkeys[uid_check]))
                 
                 # Calculate percentiles within this subnet
                 for uid in range(len(metagraph.hotkeys)):
@@ -85,15 +140,28 @@ def get_metagraph_data(netuid=None):
                     # Calculate daily emission (emission per block * blocks per day)
                     daily_emission = incentive_emission * epochs_per_day if incentive_emission > 0 else 0.0
                     
+                    hotkey = str(metagraph.hotkeys[uid])
+                    coldkey = str(metagraph.coldkeys[uid])
+                    stake = float(stakes[uid])
+                    incentive = float(incentives[uid])
+                    
+                    # Check if miner is burned (has incentive and is owner hotkey)
+                    is_burned = incentive > 0 and hotkey in owner_hotkeys
+                    
+                    # Calculate TAO amount (stake * price)
+                    tao_amount = stake * tao_price if tao_price > 0 else 0.0
+                    
                     miner_data = {
                         'uid': int(uid),
                         'netuid': int(subnet_id),
-                        'hotkey': str(metagraph.hotkeys[uid]),
-                        'coldkey': str(metagraph.coldkeys[uid]),
-                        'stake': float(stakes[uid]),
-                        'incentive': float(incentives[uid]),
+                        'hotkey': hotkey,
+                        'coldkey': coldkey,
+                        'stake': stake,
+                        'incentive': incentive,
                         'emission': float(incentive_emission),
                         'daily_emission': float(daily_emission),
+                        'tao_amount': float(tao_amount),
+                        'is_burned': is_burned,
                         'axon': metagraph.axons[uid].ip_str()[6:]
                     }
                     all_miners.append(miner_data)
@@ -122,16 +190,36 @@ def get_metagraph_data(netuid=None):
         
         # Calculate average incentive percentile per coldkey
         coldkey_data = []
-        for coldkey, incentive_percentiles in coldkey_incentives.items():
-            avg_incentive = np.mean(incentives)
+        for coldkey, incentive_list in coldkey_incentives.items():
+            avg_incentive = np.mean(incentive_list)
             coldkey_data.append({
                 'coldkey': coldkey,
                 'avg_incentive_percentile': float(avg_incentive),
-                'miner_count': len(incentives)
+                'miner_count': len(incentive_list)
             })
+        
+        # Calculate burn statistics per subnet
+        burn_stats = {}
+        for miner in all_miners:
+            netuid = miner['netuid']
+            if netuid not in burn_stats:
+                burn_stats[netuid] = {
+                    'total_miners': 0,
+                    'burned_miners': 0,
+                    'total_incentive': 0.0,
+                    'burned_incentive': 0.0
+                }
+            burn_stats[netuid]['total_miners'] += 1
+            burn_stats[netuid]['total_incentive'] += miner['incentive']
+            if miner.get('is_burned', False):
+                burn_stats[netuid]['burned_miners'] += 1
+                burn_stats[netuid]['burned_incentive'] += miner['incentive']
         
         # Sort miners by stake percentile (descending)
         all_miners.sort(key=lambda x: x['stake'], reverse=True)
+        
+        # Get TAO price
+        tao_price = get_tao_price()
         
         return {
             'success': True,
@@ -142,7 +230,9 @@ def get_metagraph_data(netuid=None):
             'total_subnets': processed_subnets,
             'selected_netuid': netuid,
             'miners': all_miners,
-            'coldkey_incentives': coldkey_data
+            'coldkey_incentives': coldkey_data,
+            'burn_stats': burn_stats,
+            'tao_price': float(tao_price)
         }
     except Exception as e:
         return {
@@ -314,7 +404,7 @@ def get_subnets():
 def get_metagraph():
     """API endpoint to get metagraph data"""
     # Get optional netuid parameter (None means all subnets)
-    netuid_param = request.args.get('netuid', None)
+    netuid_param = request.args.get('netuid', 0)
     netuid = int(netuid_param) if netuid_param and netuid_param.lower() != 'all' else None
     
     # Check if CSV file exists and is recent (less than 72 minutes old)
@@ -343,38 +433,13 @@ def get_metagraph():
 @app.route('/api/alpha-price', methods=['GET'])
 def get_alpha_price():
     """API endpoint to get TAO (alpha) price"""
-    try:
-        import requests
-        # Fetch price from CoinGecko API
-        response = requests.get(
-            'https://api.coingecko.com/api/v3/simple/price?ids=bittensor&vs_currencies=usd',
-            timeout=5
-        )
-        if response.status_code == 200:
-            data = response.json()
-            price = data.get('bittensor', {}).get('usd', 0.0)
-            return jsonify({
-                'success': True,
-                'price_usd': float(price),
-                'symbol': 'TAO',
-                'timestamp': datetime.now().isoformat()
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to fetch price from CoinGecko'
-            })
-    except ImportError:
-        # Fallback if requests is not available
-        return jsonify({
-            'success': False,
-            'error': 'requests library not available'
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        })
+    price = get_tao_price()
+    return jsonify({
+        'success': True,
+        'price_usd': float(price),
+        'symbol': 'TAO',
+        'timestamp': datetime.now().isoformat()
+    })
 
 @app.route('/')
 def index():

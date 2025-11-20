@@ -83,6 +83,10 @@
                     <h3>Coldkey Incentive Percentile Distribution</h3>
                     <canvas id="coldkeyIncentiveChart"></canvas>
                 </div>
+                <div class="chart-card chart-card-wide">
+                    <h3>Burn Status by Subnet</h3>
+                    <canvas id="burnStatusChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -95,7 +99,7 @@
                             <th>Subnet</th>
                             <th>UID</th>
                             <th>Stake</th>
-
+                            <th>TAO Amount</th>
                             <th>Hotkey</th>
                             <th>Coldkey</th>
                             <th>Incentive</th>
@@ -106,7 +110,7 @@
                     </thead>
                     <tbody id="minersTableBody">
                         <tr>
-                            <td colspan="12" class="loading">Loading miners data...</td>
+                            <td colspan="11" class="loading">Loading miners data...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -177,6 +181,10 @@
                         <h3>Coldkey Incentive Percentile Distribution</h3>
                         <canvas id="metagraphColdkeyIncentiveChart"></canvas>
                     </div>
+                    <div class="chart-card chart-card-wide">
+                        <h3>Burn Status by Subnet</h3>
+                        <canvas id="metagraphBurnStatusChart"></canvas>
+                    </div>
                 </div>
             </div>
 
@@ -189,6 +197,7 @@
                                 <th>Subnet</th>
                                 <th>UID</th>
                                 <th>Stake</th>
+                                <th>TAO Amount</th>
                                 <th>Hotkey</th>
                                 <th>Coldkey</th>
                                 <th>Incentive</th>
@@ -199,7 +208,7 @@
                         </thead>
                         <tbody id="metagraphTableBody">
                             <tr>
-                                <td colspan="12" class="loading">Loading metagraph data...</td>
+                                <td colspan="11" class="loading">Loading metagraph data...</td>
                             </tr>
                         </tbody>
                     </table>
