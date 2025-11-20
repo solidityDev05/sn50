@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bittensor Metagraph Status</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔥 Bittensor Metagraph Status</h1>
+            <div class="last-updated" id="lastUpdated">Loading...</div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Burn Percentile</div>
+                <div class="stat-value" id="burnPercentile">--</div>
+                <div class="stat-unit">%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Alpha Price (TAO)</div>
+                <div class="stat-value" id="alphaPrice">--</div>
+                <div class="stat-unit">USD</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Miners</div>
+                <div class="stat-value" id="totalMiners">--</div>
+                <div class="stat-unit">Active</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Stake</div>
+                <div class="stat-value" id="totalStake">--</div>
+                <div class="stat-unit">TAO</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Search by UID, Hotkey, or Coldkey..." class="search-input">
+            <select id="sortSelect" class="sort-select">
+                <option value="stake_percentile">Sort by Stake Percentile</option>
+                <option value="rank_percentile">Sort by Rank Percentile</option>
+                <option value="trust_percentile">Sort by Trust Percentile</option>
+                <option value="incentive_percentile">Sort by Incentive Percentile</option>
+                <option value="uid">Sort by UID</option>
+            </select>
+            <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+        </div>
+
+        <div class="miners-section">
+            <h2>Miner Percentiles</h2>
+            <div class="table-container">
+                <table id="minersTable">
+                    <thead>
+                        <tr>
+                            <th>UID</th>
+                            <th>Hotkey</th>
+                            <th>Coldkey</th>
+                            <th>Stake %</th>
+                            <th>Rank %</th>
+                            <th>Trust %</th>
+                            <th>Incentive %</th>
+                            <th>Stake (TAO)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="minersTableBody">
+                        <tr>
+                            <td colspan="9" class="loading">Loading miners data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
