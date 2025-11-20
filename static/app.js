@@ -39,48 +39,63 @@ function truncateAddress(address, start = 6, end = 4) {
     return address.substring(0, start) + '...' + address.substring(address.length - end);
 }
 
-// Copy to clipboard function (global for inline onclick handlers)
-window.copyToClipboard = async function(text, button) {
-    try {
-        await navigator.clipboard.writeText(text);
-        
-        // Visual feedback
-        const originalText = button.innerHTML;
-        button.innerHTML = '✓';
-        button.classList.add('copied');
-        
-        // Reset after 2 seconds
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            button.classList.remove('copied');
-        }, 2000);
-    } catch (err) {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        
-        try {
-            document.execCommand('copy');
+// Copy to clipboard function
+function copyToClipboard(text, button) {
+    // Decode HTML entities
+    const decodedText = text
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(decodedText).then(() => {
+            // Visual feedback
             const originalText = button.innerHTML;
             button.innerHTML = '✓';
             button.classList.add('copied');
+            
+            // Reset after 2 seconds
             setTimeout(() => {
                 button.innerHTML = originalText;
                 button.classList.remove('copied');
             }, 2000);
-        } catch (e) {
-            console.error('Failed to copy:', e);
-        }
-        
-        document.body.removeChild(textArea);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            fallbackCopy(decodedText, button);
+        });
+    } else {
+        fallbackCopy(decodedText, button);
     }
-};
+}
+
+// Fallback copy function for older browsers
+function fallbackCopy(text, button) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        document.execCommand('copy');
+        const originalText = button.innerHTML;
+        button.innerHTML = '✓';
+        button.classList.add('copied');
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('copied');
+        }, 2000);
+    } catch (e) {
+        console.error('Failed to copy:', e);
+    }
+    
+    document.body.removeChild(textArea);
+}
 
 // Fetch available subnets
 async function fetchSubnets() {
@@ -216,19 +231,34 @@ function renderMinersTable() {
         return;
     }
     
-    tbody.innerHTML = filteredMiners.map((miner, index) => `
+    tbody.innerHTML = filteredMiners.map((miner, index) => {
+        // Escape HTML entities for data attributes
+        const escapeHtml = (str) => {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+        
+        const hotkey = miner.hotkey || '';
+        const coldkey = miner.coldkey || '';
+        
+        return `
         <tr>
             <td>${miner.netuid || 'N/A'}</td>
             <td>${miner.uid}</td>
-            <td class="hotkey-cell" title="${miner.hotkey}">
-                <span class="address-text">${truncateAddress(miner.hotkey)}</span>
-                <button class="copy-btn" onclick="copyToClipboard('${miner.hotkey}', this)" title="Copy hotkey">
+            <td class="hotkey-cell" title="${hotkey}">
+                <span class="address-text">${truncateAddress(hotkey)}</span>
+                <button class="copy-btn" data-copy-text="${escapeHtml(hotkey)}" title="Copy hotkey">
                     📋
                 </button>
             </td>
-            <td class="coldkey-cell" title="${miner.coldkey}">
-                <span class="address-text">${truncateAddress(miner.coldkey)}</span>
-                <button class="copy-btn" onclick="copyToClipboard('${miner.coldkey}', this)" title="Copy coldkey">
+            <td class="coldkey-cell" title="${coldkey}">
+                <span class="address-text">${truncateAddress(coldkey)}</span>
+                <button class="copy-btn" data-copy-text="${escapeHtml(coldkey)}" title="Copy coldkey">
                     📋
                 </button>
             </td>
@@ -251,7 +281,18 @@ function renderMinersTable() {
                 </span>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
+    
+    // Attach event listeners to copy buttons after rendering
+    document.querySelectorAll('.copy-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const textToCopy = this.getAttribute('data-copy-text');
+            if (textToCopy) {
+                copyToClipboard(textToCopy, this);
+            }
+        });
+    });
 }
 
 // Calculate distribution by percentile ranges

@@ -252,6 +252,7 @@ th.sort-desc::after {
 td {
     padding: 12px 15px;
     border-bottom: 1px solid #eee;
+    vertical-align: middle;
 }
 
 tbody tr {
@@ -307,12 +308,11 @@ tbody tr:hover {
     font-family: 'Courier New', monospace;
     font-size: 0.85em;
     max-width: 250px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 200px;
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 12px 15px !important;
 }
 
 .address-text {
@@ -320,6 +320,7 @@ tbody tr:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
 }
 
 .copy-btn {
