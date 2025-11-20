@@ -1,6 +1,7 @@
 let minersData = [];
 let coldkeyIncentivesData = [];
 let sortBy = 'stake_percentile';
+let sortDirection = 'desc'; // 'asc' or 'desc'
 let charts = {
     stake: null,
     rank: null,
@@ -79,6 +80,8 @@ async function fetchMetagraphData(netuid = null) {
             coldkeyIncentivesData = data.coldkey_incentives || [];
             renderMinersTable();
             updateCharts();
+            setupTableHeaderSorting();
+            updateSortIndicators();
             document.getElementById('lastUpdated').textContent = 
                 `Last updated: ${new Date(data.timestamp).toLocaleString()}`;
         } else {
@@ -141,10 +144,28 @@ function renderMinersTable() {
     
     // Sort miners
     filteredMiners.sort((a, b) => {
-        if (sortBy === 'uid') {
-            return a.uid - b.uid;
+        let aVal, bVal;
+        
+        // Handle different field types
+        if (sortBy === 'uid' || sortBy === 'netuid') {
+            aVal = a[sortBy];
+            bVal = b[sortBy];
+        } else if (sortBy === 'hotkey' || sortBy === 'coldkey') {
+            aVal = (a[sortBy] || '').toLowerCase();
+            bVal = (b[sortBy] || '').toLowerCase();
+        } else if (sortBy === 'active') {
+            aVal = a[sortBy] ? 1 : 0;
+            bVal = b[sortBy] ? 1 : 0;
+        } else {
+            // Numeric fields (percentiles, stake)
+            aVal = parseFloat(a[sortBy]) || 0;
+            bVal = parseFloat(b[sortBy]) || 0;
         }
-        return b[sortBy] - a[sortBy];
+        
+        // Compare values
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
     });
     
     if (filteredMiners.length === 0) {
@@ -356,6 +377,73 @@ function showError(message) {
     tbody.innerHTML = `<tr><td colspan="10" class="loading" style="color: #dc3545;">${message}</td></tr>`;
 }
 
+// Function to handle column header clicks for sorting
+function setupTableHeaderSorting() {
+    const headers = document.querySelectorAll('#minersTable thead th');
+    headers.forEach((header, index) => {
+        // Map column index to field name
+        const columnMap = {
+            0: 'netuid',
+            1: 'uid',
+            2: 'hotkey',
+            3: 'coldkey',
+            4: 'stake_percentile',
+            5: 'rank_percentile',
+            6: 'trust_percentile',
+            7: 'incentive_percentile',
+            8: 'stake',
+            9: 'active'
+        };
+        
+        const fieldName = columnMap[index];
+        if (fieldName) {
+            header.style.cursor = 'pointer';
+            header.classList.add('sortable');
+            
+            header.addEventListener('click', () => {
+                // Toggle sort direction if clicking the same column
+                if (sortBy === fieldName) {
+                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortBy = fieldName;
+                    sortDirection = 'desc'; // Default to descending for new column
+                }
+                
+                updateSortIndicators();
+                renderMinersTable();
+            });
+        }
+    });
+}
+
+// Update sort indicators in table headers
+function updateSortIndicators() {
+    const headers = document.querySelectorAll('#minersTable thead th');
+    const columnMap = {
+        0: 'netuid',
+        1: 'uid',
+        2: 'hotkey',
+        3: 'coldkey',
+        4: 'stake_percentile',
+        5: 'rank_percentile',
+        6: 'trust_percentile',
+        7: 'incentive_percentile',
+        8: 'stake',
+        9: 'active'
+    };
+    
+    headers.forEach((header, index) => {
+        const fieldName = columnMap[index];
+        // Remove all sort indicators
+        header.classList.remove('sort-asc', 'sort-desc');
+        
+        // Add indicator for current sort column
+        if (fieldName === sortBy) {
+            header.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+    });
+}
+
 // Event listeners
 document.getElementById('refreshBtn').addEventListener('click', () => {
     const selectedNetuid = document.getElementById('subnetSelect').value;
@@ -374,6 +462,8 @@ document.getElementById('searchInput').addEventListener('input', () => {
 
 document.getElementById('sortSelect').addEventListener('change', (e) => {
     sortBy = e.target.value;
+    sortDirection = 'desc'; // Default to descending for dropdown
+    updateSortIndicators();
     renderMinersTable();
 });
 

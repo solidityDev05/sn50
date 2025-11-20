@@ -211,6 +211,42 @@ th {
     font-size: 0.9em;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    position: relative;
+    user-select: none;
+}
+
+th.sortable {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+th.sortable:hover {
+    background-color: #e9ecef;
+}
+
+th.sortable::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    opacity: 0.3;
+}
+
+th.sort-asc::after {
+    border-bottom: 8px solid #667eea;
+    border-top: none;
+    opacity: 1;
+}
+
+th.sort-desc::after {
+    border-top: 8px solid #667eea;
+    border-bottom: none;
+    opacity: 1;
 }
 
 td {
