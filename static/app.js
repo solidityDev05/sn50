@@ -287,11 +287,11 @@ function renderMinersTable() {
                 </button>
             </td>
 
-            <td class="percentile-cell ${getPercentileClass(miner.incentive_percentile)}">
-                ${formatNumber(miner.incentive_percentile)}
+            <td class="percentile-cell ${getPercentileClass(miner.incentive)}">
+                ${formatNumber(miner.incentive)}
             </td>
 
-            <td>${formatNumber(miner.incentive_emission || 0)}</td>
+            <td>${formatNumber(miner.emission || 0)}</td>
             <td>${formatNumber(miner.daily_emission || 0)}</td>
             <td>
                 <span class="status-badge">
@@ -715,11 +715,11 @@ function renderMetagraphTable() {
             <td class="hotkey-cell" title="${miner.hotkey}">${truncateAddress(miner.hotkey)}</td>
             <td class="coldkey-cell" title="${miner.coldkey}">${truncateAddress(miner.coldkey)}</td>
 
-            <td class="percentile-cell ${getPercentileClass(miner.incentive_percentile)}">
-                ${formatNumber(miner.incentive_percentile)}
+            <td class="percentile-cell ${getPercentileClass(miner.incentive)}">
+                ${formatNumber(miner.incentive)}
             </td>
 
-            <td>${formatNumber(miner.incentive_emission || 0)}</td>
+            <td>${formatNumber(miner.emission || 0)}</td>
             <td>${formatNumber(miner.daily_emission || 0)}</td>
             <td>
                 <span class="status-badge">
