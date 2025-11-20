@@ -10,6 +10,19 @@ let charts = {
     coldkeyIncentive: null
 };
 
+// Metagraph view data
+let metagraphMinersData = [];
+let metagraphColdkeyIncentivesData = [];
+let metagraphSortBy = 'stake_percentile';
+let metagraphSortDirection = 'desc';
+let metagraphCharts = {
+    stake: null,
+    rank: null,
+    trust: null,
+    incentive: null,
+    coldkeyIncentive: null
+};
+
 // Format number with commas
 function formatNumber(num) {
     if (num === null || num === undefined) return '--';
@@ -158,20 +171,29 @@ async function fetchAlphaPrice() {
         const response = await fetch('/api/alpha-price');
         const data = await response.json();
         
+        let priceText = '--';
         if (data.success && data.price_usd > 0) {
-            document.getElementById('alphaPrice').textContent = '$' + formatNumber(data.price_usd);
+            priceText = '$' + formatNumber(data.price_usd);
         } else {
             // Try to fetch from CoinGecko API as fallback
             try {
                 const cgResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bittensor&vs_currencies=usd');
                 const cgData = await cgResponse.json();
                 if (cgData.bittensor && cgData.bittensor.usd) {
-                    document.getElementById('alphaPrice').textContent = '$' + formatNumber(cgData.bittensor.usd);
+                    priceText = '$' + formatNumber(cgData.bittensor.usd);
+                } else {
+                    priceText = 'N/A';
                 }
             } catch (e) {
-                document.getElementById('alphaPrice').textContent = 'N/A';
+                priceText = 'N/A';
             }
         }
+        
+        // Update both price displays
+        const alphaPriceEl = document.getElementById('alphaPrice');
+        const metagraphAlphaPriceEl = document.getElementById('metagraphAlphaPrice');
+        if (alphaPriceEl) alphaPriceEl.textContent = priceText;
+        if (metagraphAlphaPriceEl) metagraphAlphaPriceEl.textContent = priceText;
     } catch (error) {
         console.error('Error fetching price:', error);
     }
@@ -538,7 +560,35 @@ function updateSortIndicators() {
     });
 }
 
-// Event listeners
+// Page navigation
+function switchPage(page) {
+    // Hide all pages
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // Show selected page
+    if (page === 'subnet') {
+        document.getElementById('subnetPage').classList.add('active');
+        document.querySelector('.nav-btn[data-page="subnet"]').classList.add('active');
+    } else if (page === 'metagraph') {
+        document.getElementById('metagraphPage').classList.add('active');
+        document.querySelector('.nav-btn[data-page="metagraph"]').classList.add('active');
+        // Load metagraph data if not loaded
+        if (metagraphMinersData.length === 0) {
+            fetchMetagraphViewData();
+        }
+    }
+}
+
+// Navigation event listeners
+document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const page = e.target.getAttribute('data-page');
+        switchPage(page);
+    });
+});
+
+// Subnet view event listeners
 document.getElementById('refreshBtn').addEventListener('click', () => {
     const selectedNetuid = document.getElementById('subnetSelect').value;
     fetchMetagraphData(selectedNetuid);
@@ -561,6 +611,333 @@ document.getElementById('sortSelect').addEventListener('change', (e) => {
     renderMinersTable();
 });
 
+// Metagraph view event listeners
+document.getElementById('metagraphRefreshBtn').addEventListener('click', () => {
+    fetchMetagraphViewData();
+    fetchAlphaPrice();
+});
+
+document.getElementById('metagraphSearchInput').addEventListener('input', () => {
+    renderMetagraphTable();
+});
+
+document.getElementById('metagraphSortSelect').addEventListener('change', (e) => {
+    metagraphSortBy = e.target.value;
+    metagraphSortDirection = 'desc';
+    updateMetagraphSortIndicators();
+    renderMetagraphTable();
+});
+
+// Fetch metagraph view data (all subnets)
+async function fetchMetagraphViewData() {
+    try {
+        const response = await fetch('/api/metagraph?netuid=all');
+        const data = await response.json();
+        
+        if (data.success) {
+            updateMetagraphStats(data);
+            metagraphMinersData = data.miners || [];
+            metagraphColdkeyIncentivesData = data.coldkey_incentives || [];
+            renderMetagraphTable();
+            updateMetagraphCharts();
+            setupMetagraphTableHeaderSorting();
+            updateMetagraphSortIndicators();
+        } else {
+            console.error('Error fetching metagraph view:', data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// Update metagraph stats
+function updateMetagraphStats(data) {
+    document.getElementById('metagraphBurnPercentile').textContent = formatPercent(data.burn_percentile);
+    document.getElementById('metagraphTotalMiners').textContent = data.total_miners || 0;
+    document.getElementById('metagraphTotalStake').textContent = formatNumber(data.total_stake);
+    document.getElementById('metagraphTotalSubnets').textContent = data.total_subnets || 0;
+    const priceEl = document.getElementById('metagraphAlphaPrice');
+    if (priceEl) {
+        const alphaPriceEl = document.getElementById('alphaPrice');
+        if (alphaPriceEl && alphaPriceEl.textContent !== '--') {
+            priceEl.textContent = alphaPriceEl.textContent;
+        }
+    }
+}
+
+// Render metagraph table
+function renderMetagraphTable() {
+    const tbody = document.getElementById('metagraphTableBody');
+    const searchTerm = document.getElementById('metagraphSearchInput').value.toLowerCase();
+    
+    // Filter miners
+    let filteredMiners = metagraphMinersData.filter(miner => {
+        if (!searchTerm) return true;
+        return (
+            miner.uid.toString().includes(searchTerm) ||
+            (miner.netuid && miner.netuid.toString().includes(searchTerm)) ||
+            miner.hotkey.toLowerCase().includes(searchTerm) ||
+            miner.coldkey.toLowerCase().includes(searchTerm)
+        );
+    });
+    
+    // Sort miners
+    filteredMiners.sort((a, b) => {
+        let aVal, bVal;
+        
+        if (metagraphSortBy === 'uid' || metagraphSortBy === 'netuid') {
+            aVal = a[metagraphSortBy];
+            bVal = b[metagraphSortBy];
+        } else if (metagraphSortBy === 'hotkey' || metagraphSortBy === 'coldkey') {
+            aVal = (a[metagraphSortBy] || '').toLowerCase();
+            bVal = (b[metagraphSortBy] || '').toLowerCase();
+        } else if (metagraphSortBy === 'active') {
+            aVal = a[metagraphSortBy] ? 1 : 0;
+            bVal = b[metagraphSortBy] ? 1 : 0;
+        } else {
+            aVal = parseFloat(a[metagraphSortBy]) || 0;
+            bVal = parseFloat(b[metagraphSortBy]) || 0;
+        }
+        
+        if (aVal < bVal) return metagraphSortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return metagraphSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    if (filteredMiners.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="loading">No miners found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = filteredMiners.map(miner => `
+        <tr>
+            <td>${miner.netuid || 'N/A'}</td>
+            <td>${miner.uid}</td>
+            <td class="hotkey-cell" title="${miner.hotkey}">${truncateAddress(miner.hotkey)}</td>
+            <td class="coldkey-cell" title="${miner.coldkey}">${truncateAddress(miner.coldkey)}</td>
+            <td class="percentile-cell ${getPercentileClass(miner.stake_percentile)}">
+                ${formatPercent(miner.stake_percentile)}
+            </td>
+            <td class="percentile-cell ${getPercentileClass(miner.rank_percentile)}">
+                ${formatPercent(miner.rank_percentile)}
+            </td>
+            <td class="percentile-cell ${getPercentileClass(miner.trust_percentile)}">
+                ${formatPercent(miner.trust_percentile)}
+            </td>
+            <td class="percentile-cell ${getPercentileClass(miner.incentive_percentile)}">
+                ${formatPercent(miner.incentive_percentile)}
+            </td>
+            <td>${formatNumber(miner.stake)}</td>
+            <td>
+                <span class="status-badge ${miner.active ? 'status-active' : 'status-inactive'}">
+                    ${miner.active ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Update metagraph charts
+function updateMetagraphCharts() {
+    if (metagraphMinersData.length === 0) return;
+    
+    const colors = {
+        stake: ['#28a745', '#ffc107', '#fd7e14', '#dc3545'],
+        rank: ['#17a2b8', '#6f42c1', '#e83e8c', '#20c997'],
+        trust: ['#007bff', '#6610f2', '#6f42c1', '#e83e8c'],
+        incentive: ['#20c997', '#17a2b8', '#ffc107', '#fd7e14']
+    };
+    
+    createMetagraphChart('metagraphStakeChart', 'stake_percentile', colors.stake);
+    createMetagraphChart('metagraphRankChart', 'rank_percentile', colors.rank);
+    createMetagraphChart('metagraphTrustChart', 'trust_percentile', colors.trust);
+    createMetagraphChart('metagraphIncentiveChart', 'incentive_percentile', colors.incentive);
+    createMetagraphColdkeyIncentiveChart();
+}
+
+// Create metagraph chart
+function createMetagraphChart(canvasId, field, colors) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    
+    const chartType = canvasId.replace('metagraph', '').replace('Chart', '');
+    
+    if (metagraphCharts[chartType]) {
+        metagraphCharts[chartType].destroy();
+    }
+    
+    const ranges = calculateDistribution(metagraphMinersData, field);
+    
+    metagraphCharts[chartType] = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(ranges),
+            datasets: [{
+                data: Object.values(ranges),
+                backgroundColor: colors,
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} miners (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Create metagraph coldkey incentive chart
+function createMetagraphColdkeyIncentiveChart() {
+    const ctx = document.getElementById('metagraphColdkeyIncentiveChart');
+    if (!ctx || metagraphColdkeyIncentivesData.length === 0) return;
+    
+    if (metagraphCharts.coldkeyIncentive) {
+        metagraphCharts.coldkeyIncentive.destroy();
+    }
+    
+    const ranges = {
+        '0-25%': 0,
+        '25-50%': 0,
+        '50-75%': 0,
+        '75-100%': 0
+    };
+    
+    metagraphColdkeyIncentivesData.forEach(coldkey => {
+        const percentile = coldkey.avg_incentive_percentile;
+        if (percentile >= 75) {
+            ranges['75-100%']++;
+        } else if (percentile >= 50) {
+            ranges['50-75%']++;
+        } else if (percentile >= 25) {
+            ranges['25-50%']++;
+        } else {
+            ranges['0-25%']++;
+        }
+    });
+    
+    const colors = ['#28a745', '#ffc107', '#fd7e14', '#dc3545'];
+    
+    metagraphCharts.coldkeyIncentive = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(ranges),
+            datasets: [{
+                data: Object.values(ranges),
+                backgroundColor: colors,
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} coldkeys (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Setup metagraph table header sorting
+function setupMetagraphTableHeaderSorting() {
+    const headers = document.querySelectorAll('#metagraphTable thead th');
+    headers.forEach((header, index) => {
+        const columnMap = {
+            0: 'netuid',
+            1: 'uid',
+            2: 'hotkey',
+            3: 'coldkey',
+            4: 'stake_percentile',
+            5: 'rank_percentile',
+            6: 'trust_percentile',
+            7: 'incentive_percentile',
+            8: 'stake',
+            9: 'active'
+        };
+        
+        const fieldName = columnMap[index];
+        if (fieldName) {
+            header.style.cursor = 'pointer';
+            header.classList.add('sortable');
+            
+            header.addEventListener('click', () => {
+                if (metagraphSortBy === fieldName) {
+                    metagraphSortDirection = metagraphSortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    metagraphSortBy = fieldName;
+                    metagraphSortDirection = 'desc';
+                }
+                
+                updateMetagraphSortIndicators();
+                renderMetagraphTable();
+            });
+        }
+    });
+}
+
+// Update metagraph sort indicators
+function updateMetagraphSortIndicators() {
+    const headers = document.querySelectorAll('#metagraphTable thead th');
+    const columnMap = {
+        0: 'netuid',
+        1: 'uid',
+        2: 'hotkey',
+        3: 'coldkey',
+        4: 'stake_percentile',
+        5: 'rank_percentile',
+        6: 'trust_percentile',
+        7: 'incentive_percentile',
+        8: 'stake',
+        9: 'active'
+    };
+    
+    headers.forEach((header, index) => {
+        const fieldName = columnMap[index];
+        header.classList.remove('sort-asc', 'sort-desc');
+        
+        if (fieldName === metagraphSortBy) {
+            header.classList.add(metagraphSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+    });
+}
+
 // Initial load
 fetchSubnets().then(() => {
     // Set default to subnet 0 if it exists, otherwise "all"
@@ -581,5 +958,10 @@ setInterval(() => {
     const selectedNetuid = document.getElementById('subnetSelect').value;
     fetchMetagraphData(selectedNetuid);
     fetchAlphaPrice();
+    
+    // Refresh metagraph view if it's active
+    if (document.getElementById('metagraphPage').classList.contains('active')) {
+        fetchMetagraphViewData();
+    }
 }, 60000);
 

@@ -11,9 +11,15 @@
     <div class="container">
         <header>
             <h1>🔥 Bittensor Metagraph Status</h1>
+            <nav class="page-nav">
+                <button class="nav-btn active" data-page="subnet">Subnet View</button>
+                <button class="nav-btn" data-page="metagraph">Metagraph View</button>
+            </nav>
             <div class="last-updated" id="lastUpdated">Loading...</div>
         </header>
 
+        <!-- Subnet View Page -->
+        <div id="subnetPage" class="page-content active">
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">Burn Percentile</div>
@@ -107,6 +113,104 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+        </div>
+
+        <!-- Metagraph View Page -->
+        <div id="metagraphPage" class="page-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Burn Percentile</div>
+                    <div class="stat-value" id="metagraphBurnPercentile">--</div>
+                    <div class="stat-unit">%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Alpha Price (TAO)</div>
+                    <div class="stat-value" id="metagraphAlphaPrice">--</div>
+                    <div class="stat-unit">USD</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Miners</div>
+                    <div class="stat-value" id="metagraphTotalMiners">--</div>
+                    <div class="stat-unit">All Subnets</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Stake</div>
+                    <div class="stat-value" id="metagraphTotalStake">--</div>
+                    <div class="stat-unit">TAO</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Subnets</div>
+                    <div class="stat-value" id="metagraphTotalSubnets">--</div>
+                    <div class="stat-unit">Active</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <input type="text" id="metagraphSearchInput" placeholder="Search by UID, Hotkey, or Coldkey..." class="search-input">
+                <select id="metagraphSortSelect" class="sort-select">
+                    <option value="stake_percentile">Sort by Stake Percentile</option>
+                    <option value="rank_percentile">Sort by Rank Percentile</option>
+                    <option value="trust_percentile">Sort by Trust Percentile</option>
+                    <option value="incentive_percentile">Sort by Incentive Percentile</option>
+                    <option value="netuid">Sort by Subnet</option>
+                    <option value="uid">Sort by UID</option>
+                </select>
+                <button id="metagraphRefreshBtn" class="refresh-btn">🔄 Refresh</button>
+            </div>
+
+            <div class="charts-section">
+                <h2>Metagraph Distribution Charts</h2>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Stake Percentile Distribution</h3>
+                        <canvas id="metagraphStakeChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Rank Percentile Distribution</h3>
+                        <canvas id="metagraphRankChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Trust Percentile Distribution</h3>
+                        <canvas id="metagraphTrustChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Incentive Percentile Distribution</h3>
+                        <canvas id="metagraphIncentiveChart"></canvas>
+                    </div>
+                    <div class="chart-card chart-card-wide">
+                        <h3>Coldkey Incentive Percentile Distribution</h3>
+                        <canvas id="metagraphColdkeyIncentiveChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="miners-section">
+                <h2>All Miners Across All Subnets</h2>
+                <div class="table-container">
+                    <table id="metagraphTable">
+                        <thead>
+                            <tr>
+                                <th>Subnet</th>
+                                <th>UID</th>
+                                <th>Hotkey</th>
+                                <th>Coldkey</th>
+                                <th>Stake %</th>
+                                <th>Rank %</th>
+                                <th>Trust %</th>
+                                <th>Incentive %</th>
+                                <th>Stake (TAO)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metagraphTableBody">
+                            <tr>
+                                <td colspan="10" class="loading">Loading metagraph data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
