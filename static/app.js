@@ -1,10 +1,12 @@
 let minersData = [];
+let coldkeyIncentivesData = [];
 let sortBy = 'stake_percentile';
 let charts = {
     stake: null,
     rank: null,
     trust: null,
-    incentive: null
+    incentive: null,
+    coldkeyIncentive: null
 };
 
 // Format number with commas
@@ -45,6 +47,7 @@ async function fetchMetagraphData() {
         if (data.success) {
             updateStats(data);
             minersData = data.miners || [];
+            coldkeyIncentivesData = data.coldkey_incentives || [];
             renderMinersTable();
             updateCharts();
             document.getElementById('lastUpdated').textContent = 
@@ -89,6 +92,7 @@ function updateStats(data) {
     document.getElementById('burnPercentile').textContent = formatPercent(data.burn_percentile);
     document.getElementById('totalMiners').textContent = data.total_miners || 0;
     document.getElementById('totalStake').textContent = formatNumber(data.total_stake);
+    document.getElementById('totalSubnets').textContent = data.total_subnets || 0;
 }
 
 // Render miners table
@@ -115,12 +119,13 @@ function renderMinersTable() {
     });
     
     if (filteredMiners.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="loading">No miners found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading">No miners found</td></tr>';
         return;
     }
     
     tbody.innerHTML = filteredMiners.map(miner => `
         <tr>
+            <td>${miner.netuid || 'N/A'}</td>
             <td>${miner.uid}</td>
             <td class="hotkey-cell" title="${miner.hotkey}">${truncateAddress(miner.hotkey)}</td>
             <td class="coldkey-cell" title="${miner.coldkey}">${truncateAddress(miner.coldkey)}</td>
@@ -225,6 +230,79 @@ function createChart(canvasId, colors) {
     });
 }
 
+// Create coldkey incentive chart
+function createColdkeyIncentiveChart() {
+    const ctx = document.getElementById('coldkeyIncentiveChart');
+    if (!ctx || coldkeyIncentivesData.length === 0) return;
+    
+    // Destroy existing chart if it exists
+    if (charts.coldkeyIncentive) {
+        charts.coldkeyIncentive.destroy();
+    }
+    
+    // Group coldkeys by incentive percentile ranges
+    const ranges = {
+        '0-25%': 0,
+        '25-50%': 0,
+        '50-75%': 0,
+        '75-100%': 0
+    };
+    
+    coldkeyIncentivesData.forEach(coldkey => {
+        const percentile = coldkey.avg_incentive_percentile;
+        if (percentile >= 75) {
+            ranges['75-100%']++;
+        } else if (percentile >= 50) {
+            ranges['50-75%']++;
+        } else if (percentile >= 25) {
+            ranges['25-50%']++;
+        } else {
+            ranges['0-25%']++;
+        }
+    });
+    
+    const colors = ['#28a745', '#ffc107', '#fd7e14', '#dc3545'];
+    
+    charts.coldkeyIncentive = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(ranges),
+            datasets: [{
+                data: Object.values(ranges),
+                backgroundColor: colors,
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} coldkeys (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 // Update all charts
 function updateCharts() {
     if (minersData.length === 0) return;
@@ -240,12 +318,13 @@ function updateCharts() {
     createChart('rankChart', colors.rank);
     createChart('trustChart', colors.trust);
     createChart('incentiveChart', colors.incentive);
+    createColdkeyIncentiveChart();
 }
 
 // Show error message
 function showError(message) {
     const tbody = document.getElementById('minersTableBody');
-    tbody.innerHTML = `<tr><td colspan="9" class="loading" style="color: #dc3545;">${message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="loading" style="color: #dc3545;">${message}</td></tr>`;
 }
 
 // Event listeners

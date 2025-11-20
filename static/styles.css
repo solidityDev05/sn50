@@ -114,6 +114,14 @@ header h1 {
     max-height: 300px;
 }
 
+.chart-card-wide {
+    grid-column: 1 / -1;
+}
+
+.chart-card-wide canvas {
+    max-height: 400px;
+}
+
 .controls {
     display: flex;
     gap: 15px;
