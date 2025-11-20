@@ -1,7 +1,7 @@
 let minersData = [];
 let coldkeyIncentivesData = [];
-let sortBy = 'stake_percentile';
-let sortDirection = 'desc'; // 'asc' or 'desc'
+let sortBy = 'stake';
+let sortDirection = 'asc'; // 'asc' or 'desc'
 let charts = {
     stake: null,
     rank: null,
@@ -13,8 +13,8 @@ let charts = {
 // Metagraph view data
 let metagraphMinersData = [];
 let metagraphColdkeyIncentivesData = [];
-let metagraphSortBy = 'stake_percentile';
-let metagraphSortDirection = 'desc';
+let metagraphSortBy = 'stake';
+let metagraphSortDirection = 'asc';
 let metagraphCharts = {
     stake: null,
     rank: null,
